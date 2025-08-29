@@ -1,0 +1,29 @@
+# Global code owners
+* @delavrx1
+
+# TypeScript/JavaScript files
+*.ts @frontend-team
+*.js @frontend-team
+*.tsx @frontend-team
+*.jsx @frontend-team
+
+# Configuration files
+*.json @devops-team
+*.yml @devops-team
+*.yaml @devops-team
+Dockerfile @devops-team
+
+# Documentation
+*.md @docs-team
+/docs/ @docs-team
+
+# GitHub workflows and actions
+/.github/ @admin-team
+
+# Package management
+package.json @frontend-team @devops-team
+yarn.lock @frontend-team @devops-team
+
+# Source code directories
+/src/ @frontend-team
+/tests/ @qa-team
