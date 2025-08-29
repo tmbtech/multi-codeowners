@@ -11,4 +11,3 @@ export interface BotResult {
  */
 export declare function runCodeOwnersBot(octokit: GitHub, context: Context): Promise<BotResult>;
 export {};
-//# sourceMappingURL=bot.d.ts.map

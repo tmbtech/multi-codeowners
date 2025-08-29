@@ -349,7 +349,7 @@ jobs:
             summary += '| Scenario | Status | Description |\n';
             summary += '|----------|--------|-------------|\n';
             
-            const context = ${{ toJSON(github) }};
+            const githubContext = ${{ toJSON(github) }};
             const needs = ${{ toJSON(needs) }};
             
             for (const scenario of scenarios) {
@@ -387,10 +387,10 @@ jobs:
             summary += '3. **Template Reference**: Copy patterns from scenarios to your CODEOWNERS file\n';
             
             await github.rest.actions.createWorkflowDispatch({
-              owner: context.repository.owner.login,
-              repo: context.repository.name,
-              workflow_id: context.workflow,
-              ref: context.ref
+              owner: githubContext.repository.owner.login,
+              repo: githubContext.repository.name,
+              workflow_id: githubContext.workflow,
+              ref: githubContext.ref
             });
             
             // Add to job summary

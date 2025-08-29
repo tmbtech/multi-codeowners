@@ -30,4 +30,3 @@ export declare function getRequiredOwnersForFiles(filePaths: string[], codeOwner
  */
 export declare function clearCache(): void;
 export {};
-//# sourceMappingURL=codeowners.d.ts.map
