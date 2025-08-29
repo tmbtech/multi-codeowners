@@ -3,7 +3,6 @@ import { Context } from '@actions/github/lib/context';
 import { getOctokit } from '@actions/github';
 import * as micromatch from 'micromatch';
 import * as fs from 'fs';
-import * as path from 'path';
 
 type GitHub = ReturnType<typeof getOctokit>;
 
