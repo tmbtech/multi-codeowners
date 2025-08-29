@@ -384,14 +384,12 @@ jobs:
             summary += '## 🔧 How to Use These Scenarios\n\n';
             summary += '1. **Manual Testing**: Use `workflow_dispatch` to test specific scenarios\n';
             summary += '2. **PR Testing**: Create PRs with different file changes to see real behavior\n';
-            summary += '3. **Template Reference**: Copy patterns from scenarios to your CODEOWNERS file\n';
+            summary += '3. **Template Reference**: Copy patterns from scenarios to your CODEOWNERS file\n\n';
             
-            await github.rest.actions.createWorkflowDispatch({
-              owner: githubContext.repository.owner.login,
-              repo: githubContext.repository.name,
-              workflow_id: githubContext.workflow,
-              ref: githubContext.ref
-            });
+            summary += '### 📊 Current Run Results\n\n';
+            summary += `**Repository**: ${githubContext.repository}\n`;
+            summary += `**Event**: ${githubContext.event_name}\n`;
+            summary += `**Run ID**: ${githubContext.run_id}\n`;
             
             // Add to job summary
             core.summary.addRaw(summary);
