@@ -139,18 +139,26 @@ jobs:
       # Remove this step if you don't need to store the results
       - name: 'Save Results as Artifacts'
         if: always()
+        run: |
+          # Create directory for results
+          mkdir -p codeowners-results
+          
+          # Save outputs to files for debugging
+          echo "${{ steps.codeowners-enforcement.outputs.result }}" > codeowners-results/result.txt
+          echo "${{ steps.codeowners-enforcement.outputs.required_owners }}" > codeowners-results/required_owners.json
+          echo "${{ steps.codeowners-enforcement.outputs.missing_approvals }}" > codeowners-results/missing_approvals.json
+          
+          # Display results
+          echo "Results saved to codeowners-results/"
+          ls -la codeowners-results/
+      
+      - name: 'Upload Results Artifact'
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: codeowners-results
-          path: |
-            # The action doesn't create files, so we create them here
-            # for demonstration purposes
+          path: codeowners-results/
           retention-days: 30
-        # Create the files to upload
-        env:
-          RESULTS: ${{ steps.codeowners-enforcement.outputs.result }}
-          REQUIRED: ${{ steps.codeowners-enforcement.outputs.required_owners }}
-          MISSING: ${{ steps.codeowners-enforcement.outputs.missing_approvals }}
 
 # =============================================================================
 # Example CODEOWNERS File
