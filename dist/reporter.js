@@ -35,13 +35,12 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.reportResults = reportResults;
 const core = __importStar(require("@actions/core"));
-const BOT_NAME = 'Code Owners Approval Bot';
 const CHECK_NAME = 'code-owners-approval';
 const COMMENT_IDENTIFIER = '<!-- code-owners-bot -->';
 /**
  * Report the results of the code owners check via GitHub status check and PR comment
  */
-async function reportResults(octokit, context, approvalResult, ownershipMapping) {
+async function reportResults(octokit, context, approvalResult) {
     core.info('📊 Reporting code owners check results...');
     const pr = context.payload.pull_request;
     if (!pr) {
@@ -51,7 +50,7 @@ async function reportResults(octokit, context, approvalResult, ownershipMapping)
         // Create or update the status check
         await updateStatusCheck(octokit, context, approvalResult);
         // Create or update the PR comment
-        await updatePullRequestComment(octokit, context, approvalResult, ownershipMapping);
+        await updatePullRequestComment(octokit, context, approvalResult);
         core.info('✅ Successfully reported code owners check results');
     }
     catch (error) {
@@ -124,10 +123,10 @@ async function updateStatusCheck(octokit, context, approvalResult) {
 /**
  * Create or update the PR comment with approval status
  */
-async function updatePullRequestComment(octokit, context, approvalResult, ownershipMapping) {
+async function updatePullRequestComment(octokit, context, approvalResult) {
     const { owner, repo } = context.repo;
     const pullNumber = context.payload.pull_request.number;
-    const commentBody = createCommentBody(approvalResult, ownershipMapping);
+    const commentBody = createCommentBody(approvalResult);
     try {
         // Find existing bot comment
         const comments = await octokit.rest.issues.listComments({
@@ -206,7 +205,7 @@ function createCheckDetails(approvalResult) {
 /**
  * Create the PR comment body
  */
-function createCommentBody(approvalResult, ownershipMapping) {
+function createCommentBody(approvalResult) {
     const lines = [];
     lines.push(COMMENT_IDENTIFIER);
     lines.push('');
@@ -230,7 +229,6 @@ function createCommentBody(approvalResult, ownershipMapping) {
         lines.push('### Required Approvals:');
         lines.push('');
         for (const status of approvalResult.ownerStatuses) {
-            const icon = status.isApproved ? '✅' : '❌';
             const checkboxIcon = status.isApproved ? '[x]' : '[ ]';
             if (status.isApproved) {
                 const approvers = status.approvedBy.map(user => `@${user}`).join(', ');

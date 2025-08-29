@@ -105,7 +105,8 @@ async function getAllPullRequestReviews(
   let page = 1;
   const perPage = 100;
 
-  while (true) {
+  let hasMoreReviews = true;
+  while (hasMoreReviews) {
     const response = await octokit.rest.pulls.listReviews({
       owner,
       repo,
@@ -115,24 +116,24 @@ async function getAllPullRequestReviews(
     });
 
     if (response.data.length === 0) {
-      break;
-    }
+      hasMoreReviews = false;
+    } else {
+      for (const review of response.data) {
+        if (review.user && review.state && review.submitted_at) {
+          reviews.push({
+            login: review.user.login,
+            state: review.state as 'APPROVED' | 'REQUEST_CHANGES' | 'COMMENTED' | 'DISMISSED',
+            submittedAt: review.submitted_at
+          });
+        }
+      }
 
-    for (const review of response.data) {
-      if (review.user && review.state && review.submitted_at) {
-        reviews.push({
-          login: review.user.login,
-          state: review.state as 'APPROVED' | 'REQUEST_CHANGES' | 'COMMENTED' | 'DISMISSED',
-          submittedAt: review.submitted_at
-        });
+      if (response.data.length < perPage) {
+        hasMoreReviews = false;
+      } else {
+        page++;
       }
     }
-
-    if (response.data.length < perPage) {
-      break;
-    }
-
-    page++;
   }
 
   return reviews;

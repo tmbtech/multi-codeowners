@@ -1,6 +1,6 @@
 name: 'Dynamic Code Owners Reviewer Bot'
 description: 'Enforces multi-owner mandatory approvals on Pull Requests based on CODEOWNERS file'
-author: 'Your Name'
+author: 'Robbie dela Victoria'
 
 branding:
   icon: 'users'

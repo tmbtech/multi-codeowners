@@ -2,11 +2,9 @@ import * as core from '@actions/core';
 import { Context } from '@actions/github/lib/context';
 import { getOctokit } from '@actions/github';
 import { ApprovalCheckResult } from './approval-checker';
-import { OwnershipMapping } from './owner-mapping';
 
 type GitHub = ReturnType<typeof getOctokit>;
 
-const BOT_NAME = 'Code Owners Approval Bot';
 const CHECK_NAME = 'code-owners-approval';
 const COMMENT_IDENTIFIER = '<!-- code-owners-bot -->';
 
@@ -16,8 +14,7 @@ const COMMENT_IDENTIFIER = '<!-- code-owners-bot -->';
 export async function reportResults(
   octokit: GitHub,
   context: Context,
-  approvalResult: ApprovalCheckResult,
-  ownershipMapping: OwnershipMapping
+  approvalResult: ApprovalCheckResult
 ): Promise<void> {
   core.info('📊 Reporting code owners check results...');
 
@@ -31,7 +28,7 @@ export async function reportResults(
     await updateStatusCheck(octokit, context, approvalResult);
     
     // Create or update the PR comment
-    await updatePullRequestComment(octokit, context, approvalResult, ownershipMapping);
+    await updatePullRequestComment(octokit, context, approvalResult);
 
     core.info('✅ Successfully reported code owners check results');
 
@@ -119,13 +116,12 @@ async function updateStatusCheck(
 async function updatePullRequestComment(
   octokit: GitHub,
   context: Context,
-  approvalResult: ApprovalCheckResult,
-  ownershipMapping: OwnershipMapping
+  approvalResult: ApprovalCheckResult
 ): Promise<void> {
   const { owner, repo } = context.repo;
   const pullNumber = context.payload.pull_request!.number;
   
-  const commentBody = createCommentBody(approvalResult, ownershipMapping);
+  const commentBody = createCommentBody(approvalResult);
 
   try {
     // Find existing bot comment
@@ -221,8 +217,7 @@ function createCheckDetails(approvalResult: ApprovalCheckResult): string {
  * Create the PR comment body
  */
 function createCommentBody(
-  approvalResult: ApprovalCheckResult,
-  ownershipMapping: OwnershipMapping
+  approvalResult: ApprovalCheckResult
 ): string {
   const lines: string[] = [];
   
@@ -249,7 +244,6 @@ function createCommentBody(
     lines.push('');
     
     for (const status of approvalResult.ownerStatuses) {
-      const icon = status.isApproved ? '✅' : '❌';
       const checkboxIcon = status.isApproved ? '[x]' : '[ ]';
       
       if (status.isApproved) {

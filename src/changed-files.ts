@@ -35,7 +35,8 @@ export async function getChangedFiles(
   const perPage = 100; // GitHub API default and max per page
   
   try {
-    while (true) {
+    let hasMoreFiles = true;
+    while (hasMoreFiles) {
       core.info(`📄 Fetching page ${page} of changed files (${perPage} per page)`);
       
       const response = await octokit.rest.pulls.listFiles({
@@ -47,31 +48,31 @@ export async function getChangedFiles(
       });
 
       if (response.data.length === 0) {
-        break; // No more files
-      }
+        hasMoreFiles = false; // No more files
+      } else {
+        // Convert GitHub API format to our format
+        for (const file of response.data) {
+          changedFiles.push({
+            filename: file.filename,
+            status: file.status as 'added' | 'modified' | 'removed' | 'renamed',
+            additions: file.additions,
+            deletions: file.deletions,
+            changes: file.changes
+          });
+        }
 
-      // Convert GitHub API format to our format
-      for (const file of response.data) {
-        changedFiles.push({
-          filename: file.filename,
-          status: file.status as 'added' | 'modified' | 'removed' | 'renamed',
-          additions: file.additions,
-          deletions: file.deletions,
-          changes: file.changes
-        });
-      }
-
-      // If we got fewer files than requested, we're on the last page
-      if (response.data.length < perPage) {
-        break;
-      }
-
-      page++;
-      
-      // Safety check to prevent infinite loops
-      if (page > 30) { // 30 * 100 = 3000 files (GitHub's max)
-        core.warning('⚠️  Reached maximum pagination limit (3000 files). Some files may not be included.');
-        break;
+        // If we got fewer files than requested, we're on the last page
+        if (response.data.length < perPage) {
+          hasMoreFiles = false;
+        } else {
+          page++;
+          
+          // Safety check to prevent infinite loops
+          if (page > 30) { // 30 * 100 = 3000 files (GitHub's max)
+            core.warning('⚠️  Reached maximum pagination limit (3000 files). Some files may not be included.');
+            hasMoreFiles = false;
+          }
+        }
       }
     }
     

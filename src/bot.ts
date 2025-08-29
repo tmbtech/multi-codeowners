@@ -49,7 +49,7 @@ export async function runCodeOwnersBot(
         totalApproved: 0
       };
       
-      await reportResults(octokit, context, noOwnerResult, ownershipMapping);
+      await reportResults(octokit, context, noOwnerResult);
       
       return {
         success: true,
@@ -64,7 +64,7 @@ export async function runCodeOwnersBot(
     
     // Step 4: Report results via status check and PR comment
     core.info('📊 Step 3: Reporting results...');
-    await reportResults(octokit, context, approvalResult, ownershipMapping);
+    await reportResults(octokit, context, approvalResult);
     
     // Step 5: Return final result
     const allRequiredOwners = getAllRequiredOwners(ownershipMapping);

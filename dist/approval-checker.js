@@ -91,7 +91,8 @@ async function getAllPullRequestReviews(octokit, context) {
     const reviews = [];
     let page = 1;
     const perPage = 100;
-    while (true) {
+    let hasMoreReviews = true;
+    while (hasMoreReviews) {
         const response = await octokit.rest.pulls.listReviews({
             owner,
             repo,
@@ -100,21 +101,25 @@ async function getAllPullRequestReviews(octokit, context) {
             per_page: perPage
         });
         if (response.data.length === 0) {
-            break;
+            hasMoreReviews = false;
         }
-        for (const review of response.data) {
-            if (review.user && review.state && review.submitted_at) {
-                reviews.push({
-                    login: review.user.login,
-                    state: review.state,
-                    submittedAt: review.submitted_at
-                });
+        else {
+            for (const review of response.data) {
+                if (review.user && review.state && review.submitted_at) {
+                    reviews.push({
+                        login: review.user.login,
+                        state: review.state,
+                        submittedAt: review.submitted_at
+                    });
+                }
+            }
+            if (response.data.length < perPage) {
+                hasMoreReviews = false;
+            }
+            else {
+                page++;
             }
         }
-        if (response.data.length < perPage) {
-            break;
-        }
-        page++;
     }
     return reviews;
 }

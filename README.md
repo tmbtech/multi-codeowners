@@ -1,6 +1,6 @@
 # Dynamic Code Owners Reviewer Bot
 
-[![CI](https://github.com/YOUR_USERNAME/multi-codeowners/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_USERNAME/multi-codeowners/actions/workflows/ci.yml)
+[![CI](https://github.com/tmbtech/multi-codeowners/actions/workflows/ci.yml/badge.svg)](https://github.com/tmbtech/multi-codeowners/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A GitHub Action that enforces **multi-owner mandatory approvals** on Pull Requests, ensuring that **ALL relevant code owners approve changes** before merging. Unlike GitHub's native CODEOWNERS which may allow merging with only one approval, this bot ensures every required owner group has at least one approval.
@@ -50,7 +50,7 @@ jobs:
     name: 'Check Code Owners Approvals'
     runs-on: ubuntu-latest
     steps:
-      - uses: YOUR_USERNAME/multi-codeowners@v1
+      - uses: tmbtech/multi-codeowners@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 ```
@@ -243,4 +243,4 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-**Need help?** [Open an issue](https://github.com/YOUR_USERNAME/multi-codeowners/issues) or check the [documentation](https://github.com/YOUR_USERNAME/multi-codeowners/wiki).
+**Need help?** [Open an issue](https://github.com/tmbtech/multi-codeowners/issues) or check the [documentation](https://github.com/tmbtech/multi-codeowners/wiki).
