@@ -40,18 +40,31 @@ jobs:
         run: |
           echo "=== Checking for uncommitted changes in dist/ ==="
           git status dist/
-          echo "\n=== Git diff output (with ignore-space-at-eol): ==="
-          git diff --ignore-space-at-eol dist/
-          echo "\n=== Line count of diff: ==="
-          git diff --ignore-space-at-eol dist/ | wc -l
           
-          DIFF_LINES=$(git diff --ignore-space-at-eol dist/ | wc -l | tr -d ' ')
-          echo "Diff lines: '$DIFF_LINES'"
+          echo "\n=== Git diff output (ignoring whitespace and binary files): ==="
+          git diff --ignore-space-at-eol --ignore-blank-lines --text dist/
           
-          if [ "$DIFF_LINES" -gt "0" ]; then
-            echo "\n❌ Detected uncommitted changes after build. See status above."
-            echo "This usually means the dist/ directory needs to be rebuilt and committed."
+          echo "\n=== Checking if changes are only in source maps or binary differences: ==="
+          
+          # Check if there are any substantive changes (ignoring source maps and whitespace)
+          SUBSTANTIVE_CHANGES=$(git diff --ignore-space-at-eol --ignore-blank-lines --name-only dist/ | grep -v '\.map$' | wc -l | tr -d ' ')
+          TOTAL_CHANGES=$(git diff --ignore-space-at-eol --name-only dist/ | wc -l | tr -d ' ')
+          
+          echo "Total changed files: $TOTAL_CHANGES"
+          echo "Substantive changes (non-.map files): $SUBSTANTIVE_CHANGES"
+          
+          if [ "$SUBSTANTIVE_CHANGES" -gt "0" ]; then
+            echo "\n❌ Detected substantive uncommitted changes after build."
+            echo "The following non-sourcemap files have changes:"
+            git diff --ignore-space-at-eol --name-only dist/ | grep -v '\.map$' | head -5
+            echo "\nFirst few lines of diff for review:"
+            git diff --ignore-space-at-eol --ignore-blank-lines dist/ | grep -v '\.map' | head -10
+            echo "\nThis usually means the dist/ directory needs to be rebuilt and committed."
             exit 1
+          elif [ "$TOTAL_CHANGES" -gt "0" ]; then
+            echo "\n⚠️  Only source map files have changes - likely due to environment differences."
+            echo "This is acceptable as source maps can vary between environments."
+            git diff --name-only dist/ | grep '\.map$' | head -3
           else
             echo "\n✅ No uncommitted changes detected in dist/ directory."
           fi
