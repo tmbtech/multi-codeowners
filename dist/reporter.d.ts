@@ -7,4 +7,3 @@ type GitHub = ReturnType<typeof getOctokit>;
  */
 export declare function reportResults(octokit: GitHub, context: Context, approvalResult: ApprovalCheckResult): Promise<void>;
 export {};
-//# sourceMappingURL=reporter.d.ts.map

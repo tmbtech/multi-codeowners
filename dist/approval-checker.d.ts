@@ -26,4 +26,3 @@ export interface ApprovalCheckResult {
  */
 export declare function checkApprovalStatus(octokit: GitHub, context: Context, ownershipMapping: OwnershipMapping): Promise<ApprovalCheckResult>;
 export {};
-//# sourceMappingURL=approval-checker.d.ts.map

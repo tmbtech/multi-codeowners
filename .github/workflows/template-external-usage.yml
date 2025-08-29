@@ -1,0 +1,223 @@
+# =============================================================================
+# Template: Multi-Codeowners Action Usage
+# =============================================================================
+# 
+# This is a template workflow file showing how to use the multi-codeowners
+# GitHub Action in your repository. Copy this file to your repository and
+# customize it according to your needs.
+#
+# To use this template in your repository:
+# 1. Copy this file to `.github/workflows/codeowners-enforcement.yml`
+# 2. Change the `uses:` line to reference the published action
+# 3. Customize the triggers, permissions, and conditions as needed
+# 4. Ensure you have a CODEOWNERS file in your repository
+#
+# =============================================================================
+
+# The name of your workflow (customize as needed)
+name: 'Code Owners Enforcement'
+
+# Define when this workflow should run
+on:
+  # Run on pull request events
+  pull_request:
+    types:
+      - opened           # When PR is first created
+      - synchronize      # When new commits are pushed to the PR
+      - ready_for_review # When PR is marked as ready for review (removes draft status)
+  
+  # Run when reviews are submitted or dismissed
+  pull_request_review:
+    types:
+      - submitted        # When a review is submitted (approved, requested changes, or commented)
+      - dismissed        # When a review is dismissed
+  
+  # Optional: Allow manual triggering of the workflow for testing
+  # Remove this section if you don't want manual triggers
+  workflow_dispatch:
+    inputs:
+      debug:
+        description: 'Enable debug logging'
+        type: boolean
+        default: false
+
+# Define the permissions this workflow needs
+# These are the MINIMUM permissions required for the action to work
+permissions:
+  contents: read         # Required: Read repository content and CODEOWNERS file
+  pull-requests: write   # Required: Create and update PR comments
+  checks: write         # Required: Create and update status checks
+  issues: write         # Required: Create PR comments (PRs are treated as issues in GitHub API)
+  
+  # Optional: If your repository uses GitHub Apps or fine-grained tokens,
+  # you may need additional permissions. Uncomment as needed:
+  # actions: read        # If you need to read workflow run information
+  # metadata: read       # If you need to read repository metadata
+
+# Environment variables that apply to all jobs (optional)
+env:
+  # You can set default environment variables here
+  # NODE_VERSION: '20'  # Uncomment if you want to pin Node.js version
+
+jobs:
+  # Main job that runs the code owners enforcement
+  enforce-code-owners:
+    # Display name for the job in GitHub UI
+    name: 'Enforce Code Owners Approval'
+    
+    # Runner operating system (ubuntu-latest is recommended)
+    runs-on: ubuntu-latest
+    
+    # Optional: Skip this workflow for certain conditions
+    # Uncomment and customize these conditions as needed:
+    if: |
+      github.actor != 'dependabot[bot]' &&
+      github.actor != 'renovate[bot]'
+    # You can also skip for draft PRs:
+    # && github.event.pull_request.draft == false
+    
+    # Optional: Set a timeout for the job (default is 6 hours)
+    timeout-minutes: 10
+    
+    steps:
+      # Step 1: Check out the repository code
+      - name: 'Checkout Repository'
+        uses: actions/checkout@v4
+        with:
+          # Fetch full history to ensure CODEOWNERS file is accessible
+          # from the base branch of the PR
+          fetch-depth: 0
+          
+          # Optional: Specify which ref to checkout
+          # ref: ${{ github.head_ref }}  # Uncomment to checkout PR branch
+      
+      # Step 2: Run the Multi-Codeowners Action
+      - name: 'Check Code Owners Approvals'
+        # ID allows us to reference outputs from this step later
+        id: codeowners-enforcement
+        
+        # IMPORTANT: Change this line when using in your repository!
+        # For external repositories, use: delavrx1/multi-codeowners@v1
+        # Replace 'v1' with the specific version you want to use
+        uses: ./  # This references the local action (only works in this repo)
+        
+        # Configure the action inputs
+        with:
+          # GitHub token for API access
+          # The default GITHUB_TOKEN usually has sufficient permissions
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
+          # Optional: You can use a custom token if needed
+          # token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
+        
+        # Optional: Set environment variables for this step
+        env:
+          # Enable debug logging if triggered manually with debug flag
+          ACTIONS_STEP_DEBUG: ${{ inputs.debug || false }}
+          # You can also enable debug logging permanently:
+          # ACTIONS_STEP_DEBUG: true
+      
+      # Step 3: Handle the results (optional)
+      # You can add additional steps to process the action outputs
+      - name: 'Process Results'
+        if: always()  # Run even if the previous step fails
+        run: |
+          echo "Code owners check result: ${{ steps.codeowners-enforcement.outputs.result }}"
+          echo "Required owners: ${{ steps.codeowners-enforcement.outputs.required_owners }}"
+          echo "Missing approvals: ${{ steps.codeowners-enforcement.outputs.missing_approvals }}"
+          
+          # Optional: Add custom logic based on the results
+          if [ "${{ steps.codeowners-enforcement.outputs.result }}" = "failure" ]; then
+            echo "❌ Code owners approval is missing!"
+            echo "The following owner groups still need to approve this PR:"
+            echo "${{ steps.codeowners-enforcement.outputs.missing_approvals }}"
+          else
+            echo "✅ All required code owners have approved this PR!"
+          fi
+      
+      # Step 4: Optional - Save results as artifacts for debugging
+      # Remove this step if you don't need to store the results
+      - name: 'Save Results as Artifacts'
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: codeowners-results
+          path: |
+            # The action doesn't create files, so we create them here
+            # for demonstration purposes
+          retention-days: 30
+        # Create the files to upload
+        env:
+          RESULTS: ${{ steps.codeowners-enforcement.outputs.result }}
+          REQUIRED: ${{ steps.codeowners-enforcement.outputs.required_owners }}
+          MISSING: ${{ steps.codeowners-enforcement.outputs.missing_approvals }}
+
+# =============================================================================
+# Example CODEOWNERS File
+# =============================================================================
+#
+# To use this action, you need a CODEOWNERS file in your repository.
+# Create one of these files in your repository root:
+#
+# 1. .github/CODEOWNERS (recommended)
+# 2. CODEOWNERS
+# 3. .CODEOWNERS
+#
+# Example CODEOWNERS content:
+#
+# # Global owners (will be required for all files)
+# * @your-org/maintainers
+#
+# # Frontend code
+# *.js @your-org/frontend-team
+# *.ts @your-org/frontend-team
+# *.tsx @your-org/frontend-team
+# *.jsx @your-org/frontend-team
+# *.css @your-org/frontend-team
+# *.scss @your-org/frontend-team
+#
+# # Backend code
+# *.py @your-org/backend-team
+# *.java @your-org/backend-team
+# *.go @your-org/backend-team
+#
+# # Infrastructure and configuration
+# *.yml @your-org/devops-team
+# *.yaml @your-org/devops-team
+# *.json @your-org/devops-team
+# Dockerfile @your-org/devops-team
+# docker-compose.yml @your-org/devops-team
+#
+# # Documentation
+# *.md @your-org/docs-team
+# /docs/ @your-org/docs-team
+#
+# # Database changes
+# /migrations/ @your-org/backend-team @your-org/dba-team
+# *.sql @your-org/backend-team @your-org/dba-team
+#
+# # GitHub workflows and repository configuration
+# /.github/ @your-org/admin-team
+#
+# # Package files (multiple teams need to approve)
+# package.json @your-org/frontend-team @your-org/devops-team
+# yarn.lock @your-org/frontend-team @your-org/devops-team
+# requirements.txt @your-org/backend-team @your-org/devops-team
+#
+# # Specific directories
+# /src/critical-module/ @your-org/senior-engineers
+# /config/production/ @your-org/admin-team @your-org/devops-team
+#
+# =============================================================================
+# Troubleshooting
+# =============================================================================
+#
+# If the action is not working as expected, try:
+#
+# 1. Check that your CODEOWNERS file exists in one of the supported locations
+# 2. Verify that the teams/users in CODEOWNERS exist and are spelled correctly  
+# 3. Ensure the GitHub token has sufficient permissions
+# 4. Enable debug logging by setting ACTIONS_STEP_DEBUG: true
+# 5. Check the action's status checks and PR comments for detailed error messages
+#
+# =============================================================================

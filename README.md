@@ -196,6 +196,67 @@ Configure branch protection to require the status check:
 3. Enable "Require status checks to pass before merging"
 4. Select "code-owners-approval" check
 
+## 📜 Example Workflows
+
+This repository includes three example workflow files that demonstrate different use cases:
+
+### 🧪 [test-codeowners-enforcement.yml](.github/workflows/test-codeowners-enforcement.yml)
+**Purpose**: Comprehensive testing with multiple scenarios
+
+- **Matrix testing**: Tests different file change scenarios (docs-only, config-only, source-only, etc.)
+- **Debug logging**: Enabled by default with `ACTIONS_STEP_DEBUG: true`
+- **Artifacts**: Saves action outputs (`result`, `required_owners`, `missing_approvals`) for each scenario
+- **Summary reports**: Generates detailed test summaries in GitHub Actions UI
+
+**How to use**:
+- Automatically runs on PR events
+- Check the "Artifacts" section of workflow runs to download test results
+- Look at the "Summary" tab for scenario explanations and results table
+
+### 📋 [template-external-usage.yml](.github/workflows/template-external-usage.yml)
+**Purpose**: Copy-paste template for other repositories
+
+- **Comprehensive comments**: Every configuration option is explained
+- **Best practices**: Shows recommended permissions, triggers, and conditions
+- **Example CODEOWNERS**: Includes a complete example CODEOWNERS file in comments
+- **Troubleshooting guide**: Built-in documentation for common issues
+
+**How to use**:
+1. Copy this file to your repository as `.github/workflows/codeowners-enforcement.yml`
+2. Change the `uses: ./` line to `uses: delavrx1/multi-codeowners@v1`
+3. Customize triggers, permissions, and conditions as needed
+4. Create a CODEOWNERS file in your repository
+
+### 🎭 [demo-scenarios.yml](.github/workflows/demo-scenarios.yml)
+**Purpose**: Interactive demonstrations and testing
+
+- **Multiple scenarios**: Tests different CODEOWNERS patterns in separate jobs
+- **Manual triggers**: Use `workflow_dispatch` to test specific scenarios
+- **Live examples**: Each job creates a temporary CODEOWNERS file to demonstrate patterns
+- **Educational**: Shows multi-owner, single-owner, no-owner, and mixed-ownership scenarios
+
+**How to use**:
+- Go to Actions → "Code Owners Demo Scenarios" → "Run workflow"
+- Select which scenario to run (or "all" for comprehensive testing)
+- Check the job summaries for detailed explanations of each pattern
+
+### 📊 Interpreting Results
+
+**Action Outputs**:
+- `result`: `"success"` or `"failure"` - overall approval status
+- `required_owners`: JSON array of all owner groups that need approval
+- `missing_approvals`: JSON array of owner groups still waiting for approval
+
+**Artifacts** (from test-codeowners-enforcement.yml):
+- `test-results-{scenario}/result.txt`: Pass/fail status for each scenario
+- `test-results-{scenario}/required_owners.json`: Required owners for that scenario
+- `test-results-{scenario}/missing_approvals.json`: Missing approvals for that scenario
+
+**GitHub Action Logs**:
+- Enable `ACTIONS_STEP_DEBUG: true` for verbose logging
+- Look for "Code Owners Bot" step logs for detailed file mapping
+- Check status check details in PR for approval breakdown
+
 ## 🧪 Development
 
 ### Running Tests

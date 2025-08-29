@@ -1,29 +1,163 @@
-# Global code owners
+# =============================================================================
+# CODEOWNERS - Multi-Team Code Review Requirements
+# =============================================================================
+# This file defines which teams/users must approve changes to specific files
+# and directories. The multi-codeowners action enforces that ALL required
+# approvals are received before allowing PRs to merge.
+#
+# Pattern Matching Rules:
+# - Patterns are processed bottom-to-top (last match wins)
+# - Leading '/' makes patterns absolute from repo root  
+# - Trailing '/' matches directories and their contents
+# - Patterns without '/' match filenames anywhere in repo
+# - Use # for comments and empty lines for readability
+# =============================================================================
+
+# Global code owners - fallback for any files not matched by specific patterns
 * @delavrx1
 
-# TypeScript/JavaScript files
+# Frontend Technologies
+# ---------------------
+# TypeScript/JavaScript files need frontend team review
 *.ts @frontend-team
 *.js @frontend-team
 *.tsx @frontend-team
 *.jsx @frontend-team
 
-# Configuration files
+# CSS and styling files need design team input
+*.css @design-team
+*.scss @design-team
+*.sass @design-team
+*.less @design-team
+
+# HTML templates and components
+*.html @frontend-team @design-team
+*.vue @frontend-team
+*.svelte @frontend-team
+
+# Configuration & Infrastructure
+# ------------------------------
+# Configuration files need devops oversight
 *.json @devops-team
 *.yml @devops-team
 *.yaml @devops-team
 Dockerfile @devops-team
+docker-compose*.yml @devops-team
+
+# Environment and deployment configs
+.env* @devops-team @admin-team
+*.config.js @devops-team
+*.config.ts @devops-team
 
 # Documentation
+# -------------
+# General documentation
 *.md @docs-team
 /docs/ @docs-team
 
-# GitHub workflows and actions
+# API documentation requires both docs and backend teams
+/docs/api/ @docs-team @backend-team
+
+# README files are critical - need docs team approval
+README.md @docs-team
+**/README.md @docs-team
+
+# GitHub & Repository Management
+# ------------------------------
+# GitHub workflows and actions need admin oversight
 /.github/ @admin-team
 
-# Package management
+# Workflow files are critical infrastructure - need admin AND devops
+/.github/workflows/ @admin-team @devops-team
+
+# Issue and PR templates
+/.github/ISSUE_TEMPLATE/ @admin-team @docs-team
+/.github/PULL_REQUEST_TEMPLATE/ @admin-team @docs-team
+
+# Package Management
+# ------------------
+# Package files affect both development and deployment
 package.json @frontend-team @devops-team
 yarn.lock @frontend-team @devops-team
+package-lock.json @frontend-team @devops-team
 
-# Source code directories
+# Python dependencies
+requirements*.txt @backend-team @devops-team
+Pipfile* @backend-team @devops-team
+
+# Source Code Directories
+# -----------------------
+# Frontend source code
 /src/ @frontend-team
+
+# Backend source code
+/api/ @backend-team
+/server/ @backend-team
+/services/ @backend-team
+
+# Shared utilities need review from relevant teams
+/src/utils/ @frontend-team @backend-team
+/lib/ @frontend-team @backend-team
+
+# Testing
+# -------
+# Test files need QA team approval
 /tests/ @qa-team
+/test/ @qa-team
+**/*.test.ts @qa-team
+**/*.spec.ts @qa-team
+**/*.test.js @qa-team
+**/*.spec.js @qa-team
+
+# End-to-end tests are critical
+/e2e/ @qa-team @frontend-team
+/cypress/ @qa-team @frontend-team
+
+# Database & Migrations
+# ---------------------
+# Database migrations need backend and DBA approval
+/migrations/ @backend-team @dba-team
+*.sql @backend-team @dba-team
+
+# Security & Compliance
+# ---------------------
+# Security-related files need security team review
+/security/ @security-team
+*.security.* @security-team
+
+# License and legal files need admin approval
+LICENSE* @admin-team
+COPYRIGHT* @admin-team
+
+# Critical Configuration
+# ---------------------
+# Production configs need multiple approvals
+/config/production/ @admin-team @devops-team @backend-team
+
+# Monitoring and logging configs
+/monitoring/ @devops-team @backend-team
+/logging/ @devops-team @backend-team
+
+# Demonstration Patterns
+# ---------------------
+# These patterns demonstrate advanced CODEOWNERS features
+
+# Exclusion example - legacy files don't need review (commented out for safety)
+# !legacy/**
+
+# Specific file overrides - this specific file needs extra scrutiny
+/src/critical-component.ts @frontend-team @admin-team @security-team
+
+# Directory-specific overrides
+/src/admin-panel/ @admin-team @frontend-team
+
+# Multiple specific patterns
+*.env.production @admin-team @devops-team @security-team
+
+# =============================================================================
+# Notes:
+# - Order matters: more specific patterns override general ones
+# - Use 'git log --follow <file>' to see who typically modifies files
+# - Test patterns using GitHub's web UI or this action's demo workflows
+# - Keep this file updated as your team structure evolves
+# =============================================================================

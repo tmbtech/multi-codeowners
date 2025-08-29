@@ -40,4 +40,3 @@ export declare function getOwnershipSummary(ownershipMapping: OwnershipMapping):
  */
 export declare function findOrphanedFiles(ownershipMapping: OwnershipMapping): string[];
 export {};
-//# sourceMappingURL=owner-mapping.d.ts.map

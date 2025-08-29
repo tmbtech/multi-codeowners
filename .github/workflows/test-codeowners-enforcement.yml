@@ -1,0 +1,154 @@
+name: 'Enhanced Code Owners Testing'
+
+on:
+  pull_request:
+    types:
+      - opened           # When PR is first created
+      - synchronize      # When new commits are pushed
+      - ready_for_review # When PR is marked ready for review
+  pull_request_review:
+    types:
+      - submitted        # When a review is submitted
+      - dismissed        # When a review is dismissed
+  workflow_dispatch:     # Manual trigger for testing
+
+permissions:
+  contents: read         # Read repository content and CODEOWNERS
+  pull-requests: write   # Create and update PR comments
+  checks: write         # Create and update status checks
+  issues: write         # Create PR comments (PRs are issues in GitHub API)
+
+jobs:
+  test-matrix:
+    name: 'Test Code Owners - ${{ matrix.scenario }}'
+    runs-on: ubuntu-latest
+    
+    # Continue on error to allow all matrix jobs to complete
+    continue-on-error: true
+    
+    strategy:
+      # Don't cancel other jobs if one fails
+      fail-fast: false
+      matrix:
+        scenario:
+          - 'standard-pr'        # Regular PR with mixed file changes
+          - 'docs-only'          # Only documentation changes
+          - 'config-only'        # Only configuration file changes
+          - 'source-only'        # Only source code changes
+          - 'github-workflow'    # Changes to .github/ directory
+          - 'package-files'      # Changes to package.json/yarn.lock
+    
+    steps:
+      - name: 'Checkout Repository'
+        uses: actions/checkout@v4
+        with:
+          # We need the full history to access CODEOWNERS from the base branch
+          fetch-depth: 0
+          
+      - name: 'Setup Node.js'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'yarn'
+          
+      - name: 'Install Dependencies'
+        run: yarn install --frozen-lockfile
+        
+      - name: 'Build Action'
+        run: yarn build
+        
+      - name: 'Run Code Owners Bot - ${{ matrix.scenario }}'
+        id: codeowners-check
+        uses: ./
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          # Enable debug logging for comprehensive test output
+          ACTIONS_STEP_DEBUG: true
+          ACTIONS_RUNNER_DEBUG: true
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_EVENT_ACTION: ${{ github.event.action }}
+          TEST_SCENARIO: ${{ matrix.scenario }}
+          
+      - name: 'Capture Action Outputs'
+        if: always()
+        run: |
+          echo "## Code Owners Check Results - ${{ matrix.scenario }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Result:** ${{ steps.codeowners-check.outputs.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Required Owners:** ${{ steps.codeowners-check.outputs.required_owners }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Missing Approvals:** ${{ steps.codeowners-check.outputs.missing_approvals }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Save outputs to files for artifact upload
+          mkdir -p test-results/${{ matrix.scenario }}
+          echo "${{ steps.codeowners-check.outputs.result }}" > test-results/${{ matrix.scenario }}/result.txt
+          echo "${{ steps.codeowners-check.outputs.required_owners }}" > test-results/${{ matrix.scenario }}/required_owners.json
+          echo "${{ steps.codeowners-check.outputs.missing_approvals }}" > test-results/${{ matrix.scenario }}/missing_approvals.json
+          
+      - name: 'Upload Test Results'
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.scenario }}
+          path: test-results/${{ matrix.scenario }}/
+          retention-days: 30
+
+  test-summary:
+    name: 'Test Summary'
+    runs-on: ubuntu-latest
+    needs: test-matrix
+    if: always()
+    
+    steps:
+      - name: 'Download All Test Results'
+        uses: actions/download-artifact@v4
+        with:
+          path: all-test-results
+          
+      - name: 'Generate Test Summary'
+        run: |
+          echo "# Code Owners Testing Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Scenario | Result | Required Owners | Missing Approvals |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|--------|----------------|-------------------|" >> $GITHUB_STEP_SUMMARY
+          
+          for scenario_dir in all-test-results/test-results-*/; do
+            if [ -d "$scenario_dir" ]; then
+              scenario=$(basename "$scenario_dir" | sed 's/test-results-//')
+              result="N/A"
+              required="N/A"
+              missing="N/A"
+              
+              if [ -f "$scenario_dir/result.txt" ]; then
+                result=$(cat "$scenario_dir/result.txt")
+              fi
+              
+              if [ -f "$scenario_dir/required_owners.json" ]; then
+                required=$(cat "$scenario_dir/required_owners.json" | head -c 50)
+                if [ ${#required} -eq 50 ]; then
+                  required="${required}..."
+                fi
+              fi
+              
+              if [ -f "$scenario_dir/missing_approvals.json" ]; then
+                missing=$(cat "$scenario_dir/missing_approvals.json" | head -c 50)
+                if [ ${#missing} -eq 50 ]; then
+                  missing="${missing}..."
+                fi
+              fi
+              
+              echo "| $scenario | $result | $required | $missing |" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Testing Scenarios Explained:**" >> $GITHUB_STEP_SUMMARY
+          echo "- \`standard-pr\`: Mixed file changes across multiple owner groups" >> $GITHUB_STEP_SUMMARY
+          echo "- \`docs-only\`: Only documentation files (tests @docs-team ownership)" >> $GITHUB_STEP_SUMMARY
+          echo "- \`config-only\`: Only configuration files (tests @devops-team ownership)" >> $GITHUB_STEP_SUMMARY
+          echo "- \`source-only\`: Only source code files (tests @frontend-team ownership)" >> $GITHUB_STEP_SUMMARY
+          echo "- \`github-workflow\`: Changes to .github/ directory (tests @admin-team ownership)" >> $GITHUB_STEP_SUMMARY
+          echo "- \`package-files\`: Changes to package.json/yarn.lock (tests multiple team ownership)" >> $GITHUB_STEP_SUMMARY

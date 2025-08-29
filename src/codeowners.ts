@@ -2,6 +2,7 @@ import * as core from '@actions/core';
 import { Context } from '@actions/github/lib/context';
 import { getOctokit } from '@actions/github';
 import * as micromatch from 'micromatch';
+import * as fs from 'fs';
 
 type GitHub = ReturnType<typeof getOctokit>;
 
@@ -56,16 +57,52 @@ export function parseCodeOwnersContent(content: string): ParsedCodeOwners {
 }
 
 /**
+ * Read CODEOWNERS file from filesystem (for demo scenarios)
+ */
+async function getCodeOwnersFromFilesystem(): Promise<ParsedCodeOwners> {
+  const possiblePaths = ['.github/CODEOWNERS', 'CODEOWNERS', '.CODEOWNERS'];
+  
+  for (const filePath of possiblePaths) {
+    try {
+      core.info(`🔍 Attempting to read CODEOWNERS from filesystem: ${filePath}`);
+      
+      if (fs.existsSync(filePath)) {
+        const content = fs.readFileSync(filePath, 'utf-8');
+        core.info(`✅ Successfully read CODEOWNERS from filesystem: ${filePath}`);
+        
+        const parsed = parseCodeOwnersContent(content);
+        return parsed;
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      core.info(`❌ Failed to read ${filePath} from filesystem: ${errorMessage}`);
+      continue;
+    }
+  }
+  
+  throw new Error('CODEOWNERS file not found on filesystem in any of the expected locations: ' + possiblePaths.join(', '));
+}
+
+/**
  * Fetch and parse CODEOWNERS file from GitHub repository
  */
 export async function getCodeOwners(
   octokit: GitHub,
   context: Context
 ): Promise<ParsedCodeOwners> {
-  // Return cached result if available
-  if (codeOwnersCache) {
+  // For demo scenarios, always fetch fresh data to allow temporary CODEOWNERS files
+  const isDemoScenario = process.env.DEMO_SCENARIO !== undefined;
+  
+  // Return cached result if available and not in demo mode
+  if (codeOwnersCache && !isDemoScenario) {
     core.info('📋 Using cached CODEOWNERS data');
     return codeOwnersCache;
+  }
+  
+  if (isDemoScenario) {
+    core.info('🎭 Demo scenario detected - reading CODEOWNERS from filesystem');
+    // In demo scenarios, read from filesystem since we create temporary files
+    return await getCodeOwnersFromFilesystem();
   }
 
   const { owner, repo } = context.repo;

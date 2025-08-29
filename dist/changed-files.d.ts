@@ -26,4 +26,3 @@ export declare function getChangedFilenames(changedFiles: ChangedFile[], options
  */
 export declare function getFilesForOwnershipCheck(octokit: GitHub, context: Context): Promise<string[]>;
 export {};
-//# sourceMappingURL=changed-files.d.ts.map

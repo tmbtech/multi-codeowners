@@ -1,0 +1,396 @@
+name: 'Code Owners Demo Scenarios'
+
+on:
+  # Allow manual triggering for demos and testing
+  workflow_dispatch:
+    inputs:
+      scenario:
+        description: 'Which scenario to run'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - 'all'
+          - 'multi-owner-required'
+          - 'single-owner'
+          - 'no-owner-required'
+          - 'mixed-ownership'
+      debug:
+        description: 'Enable debug logging'
+        type: boolean
+        default: true
+  
+  # Also run on PR events for comprehensive testing
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - ready_for_review
+  pull_request_review:
+    types:
+      - submitted
+      - dismissed
+
+permissions:
+  contents: read         # Read repository content and CODEOWNERS
+  pull-requests: write   # Create and update PR comments
+  checks: write         # Create and update status checks
+  issues: write         # Create PR comments (PRs are issues in GitHub API)
+
+jobs:
+  # Job 1: Multi-owner requirement scenario
+  multi-owner-scenario:
+    name: 'Demo: Multi-Owner Required (package.json)'
+    runs-on: ubuntu-latest
+    if: inputs.scenario == 'all' || inputs.scenario == 'multi-owner-required' || github.event_name == 'pull_request' || github.event_name == 'pull_request_review'
+    
+    steps:
+      - name: 'Checkout Repository'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: 'Setup Node.js'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'yarn'
+          
+      - name: 'Install Dependencies'
+        run: yarn install --frozen-lockfile
+        
+      - name: 'Build Action'
+        run: yarn build
+        
+      - name: 'Create Temporary CODEOWNERS for Multi-Owner Test'
+        run: |
+          # Backup original CODEOWNERS
+          cp .github/CODEOWNERS .github/CODEOWNERS.backup
+          
+          # Create a CODEOWNERS that requires multiple teams for package.json
+          cat > .github/CODEOWNERS << 'EOF'
+          # Demo: Multi-owner requirement
+          # package.json changes require BOTH frontend-team AND devops-team approval
+          package.json @frontend-team @devops-team
+          
+          # All other files require global owner
+          * @delavrx1
+          EOF
+          
+      - name: 'Run Code Owners Bot - Multi-Owner Scenario'
+        id: multi-owner-check
+        uses: ./
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          ACTIONS_STEP_DEBUG: ${{ inputs.debug || false }}
+          DEMO_SCENARIO: 'multi-owner-required'
+          
+      - name: 'Restore Original CODEOWNERS'
+        if: always()
+        run: |
+          if [ -f .github/CODEOWNERS.backup ]; then
+            mv .github/CODEOWNERS.backup .github/CODEOWNERS
+          fi
+          
+      - name: 'Report Multi-Owner Results'
+        if: always()
+        run: |
+          echo "## 🎯 Multi-Owner Scenario Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Scenario:** Changes to package.json require @frontend-team AND @devops-team approval" >> $GITHUB_STEP_SUMMARY
+          echo "**Result:** ${{ steps.multi-owner-check.outputs.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Required Owners:** ${{ steps.multi-owner-check.outputs.required_owners }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Missing Approvals:** ${{ steps.multi-owner-check.outputs.missing_approvals }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+  # Job 2: Single owner scenario
+  single-owner-scenario:
+    name: 'Demo: Single Owner Required (docs)'
+    runs-on: ubuntu-latest
+    if: inputs.scenario == 'all' || inputs.scenario == 'single-owner' || github.event_name == 'pull_request' || github.event_name == 'pull_request_review'
+    
+    steps:
+      - name: 'Checkout Repository'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: 'Setup Node.js'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'yarn'
+          
+      - name: 'Install Dependencies'
+        run: yarn install --frozen-lockfile
+        
+      - name: 'Build Action'
+        run: yarn build
+        
+      - name: 'Create Temporary CODEOWNERS for Single-Owner Test'
+        run: |
+          # Backup original CODEOWNERS
+          cp .github/CODEOWNERS .github/CODEOWNERS.backup
+          
+          # Create a CODEOWNERS with single team requirements
+          cat > .github/CODEOWNERS << 'EOF'
+          # Demo: Single owner requirement
+          # Documentation changes only need docs-team approval
+          *.md @docs-team
+          /docs/ @docs-team
+          
+          # Source code needs frontend-team
+          *.ts @frontend-team
+          *.js @frontend-team
+          
+          # Default fallback
+          * @delavrx1
+          EOF
+          
+      - name: 'Run Code Owners Bot - Single-Owner Scenario'
+        id: single-owner-check
+        uses: ./
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          ACTIONS_STEP_DEBUG: ${{ inputs.debug || false }}
+          DEMO_SCENARIO: 'single-owner'
+          
+      - name: 'Restore Original CODEOWNERS'
+        if: always()
+        run: |
+          if [ -f .github/CODEOWNERS.backup ]; then
+            mv .github/CODEOWNERS.backup .github/CODEOWNERS
+          fi
+          
+      - name: 'Report Single-Owner Results'
+        if: always()
+        run: |
+          echo "## 📝 Single-Owner Scenario Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Scenario:** Documentation changes require only @docs-team approval" >> $GITHUB_STEP_SUMMARY
+          echo "**Result:** ${{ steps.single-owner-check.outputs.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Required Owners:** ${{ steps.single-owner-check.outputs.required_owners }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Missing Approvals:** ${{ steps.single-owner-check.outputs.missing_approvals }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+  # Job 3: No owner required scenario
+  no-owner-scenario:
+    name: 'Demo: No Owner Required (public files)'
+    runs-on: ubuntu-latest
+    if: inputs.scenario == 'all' || inputs.scenario == 'no-owner-required' || github.event_name == 'pull_request' || github.event_name == 'pull_request_review'
+    
+    steps:
+      - name: 'Checkout Repository'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: 'Setup Node.js'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'yarn'
+          
+      - name: 'Install Dependencies'
+        run: yarn install --frozen-lockfile
+        
+      - name: 'Build Action'
+        run: yarn build
+        
+      - name: 'Create Temporary CODEOWNERS for No-Owner Test'
+        run: |
+          # Backup original CODEOWNERS
+          cp .github/CODEOWNERS .github/CODEOWNERS.backup
+          
+          # Create a CODEOWNERS that doesn't match certain file patterns
+          cat > .github/CODEOWNERS << 'EOF'
+          # Demo: No owner requirement for certain files
+          # Only specific files require approval
+          /src/ @frontend-team
+          *.json @devops-team
+          /.github/ @admin-team
+          
+          # Note: README.md and other files at root don't have owners
+          # so they should pass without approval
+          EOF
+          
+      - name: 'Run Code Owners Bot - No-Owner Scenario'
+        id: no-owner-check
+        uses: ./
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          ACTIONS_STEP_DEBUG: ${{ inputs.debug || false }}
+          DEMO_SCENARIO: 'no-owner-required'
+          
+      - name: 'Restore Original CODEOWNERS'
+        if: always()
+        run: |
+          if [ -f .github/CODEOWNERS.backup ]; then
+            mv .github/CODEOWNERS.backup .github/CODEOWNERS
+          fi
+          
+      - name: 'Report No-Owner Results'
+        if: always()
+        run: |
+          echo "## 🆓 No-Owner Scenario Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Scenario:** Files without CODEOWNERS patterns should pass without approval" >> $GITHUB_STEP_SUMMARY
+          echo "**Result:** ${{ steps.no-owner-check.outputs.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Required Owners:** ${{ steps.no-owner-check.outputs.required_owners }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Missing Approvals:** ${{ steps.no-owner-check.outputs.missing_approvals }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+  # Job 4: Mixed ownership scenario
+  mixed-ownership-scenario:
+    name: 'Demo: Mixed Ownership (complex patterns)'
+    runs-on: ubuntu-latest
+    if: inputs.scenario == 'all' || inputs.scenario == 'mixed-ownership' || github.event_name == 'pull_request' || github.event_name == 'pull_request_review'
+    
+    steps:
+      - name: 'Checkout Repository'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: 'Setup Node.js'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'yarn'
+          
+      - name: 'Install Dependencies'
+        run: yarn install --frozen-lockfile
+        
+      - name: 'Build Action'
+        run: yarn build
+        
+      - name: 'Create Temporary CODEOWNERS for Mixed-Ownership Test'
+        run: |
+          # Backup original CODEOWNERS
+          cp .github/CODEOWNERS .github/CODEOWNERS.backup
+          
+          # Create complex CODEOWNERS with overlapping patterns
+          cat > .github/CODEOWNERS << 'EOF'
+          # Demo: Mixed ownership patterns
+          # Global fallback - all files need at least one approval
+          * @delavrx1
+          
+          # TypeScript files need frontend team
+          *.ts @frontend-team
+          
+          # Configuration files need devops
+          *.json @devops-team
+          *.yml @devops-team
+          
+          # GitHub directory needs admin team (overrides global)
+          /.github/ @admin-team
+          
+          # But workflow files need BOTH admin and devops (more specific pattern)
+          /.github/workflows/ @admin-team @devops-team
+          
+          # Package files need frontend AND devops
+          package.json @frontend-team @devops-team
+          
+          # Documentation can be approved by docs team OR maintainers
+          *.md @docs-team
+          EOF
+          
+      - name: 'Run Code Owners Bot - Mixed-Ownership Scenario'
+        id: mixed-ownership-check
+        uses: ./
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          ACTIONS_STEP_DEBUG: ${{ inputs.debug || false }}
+          DEMO_SCENARIO: 'mixed-ownership'
+          
+      - name: 'Restore Original CODEOWNERS'
+        if: always()
+        run: |
+          if [ -f .github/CODEOWNERS.backup ]; then
+            mv .github/CODEOWNERS.backup .github/CODEOWNERS
+          fi
+          
+      - name: 'Report Mixed-Ownership Results'
+        if: always()
+        run: |
+          echo "## 🔀 Mixed-Ownership Scenario Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Scenario:** Complex CODEOWNERS with overlapping patterns and multiple requirements" >> $GITHUB_STEP_SUMMARY
+          echo "**Result:** ${{ steps.mixed-ownership-check.outputs.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Required Owners:** ${{ steps.mixed-ownership-check.outputs.required_owners }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Missing Approvals:** ${{ steps.mixed-ownership-check.outputs.missing_approvals }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+  # Job 5: Collect and summarize all scenarios
+  demo-summary:
+    name: 'Demo Summary Report'
+    runs-on: ubuntu-latest
+    needs: [multi-owner-scenario, single-owner-scenario, no-owner-scenario, mixed-ownership-scenario]
+    if: always()
+    
+    steps:
+      - name: 'Generate Demo Summary'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const scenarios = [
+              'multi-owner-scenario',
+              'single-owner-scenario', 
+              'no-owner-scenario',
+              'mixed-ownership-scenario'
+            ];
+            
+            let summary = '# 🎭 Code Owners Demo Scenarios Summary\n\n';
+            summary += 'This workflow demonstrates different code ownership patterns and their enforcement:\n\n';
+            summary += '| Scenario | Status | Description |\n';
+            summary += '|----------|--------|-------------|\n';
+            
+            const githubContext = ${{ toJSON(github) }};
+            const needs = ${{ toJSON(needs) }};
+            
+            for (const scenario of scenarios) {
+              const result = needs[scenario]?.result || 'skipped';
+              const emoji = result === 'success' ? '✅' : result === 'failure' ? '❌' : '⚪';
+              
+              let description = '';
+              switch(scenario) {
+                case 'multi-owner-scenario':
+                  description = 'Tests files requiring multiple team approvals (e.g., package.json)';
+                  break;
+                case 'single-owner-scenario':
+                  description = 'Tests files requiring single team approval (e.g., documentation)';
+                  break;
+                case 'no-owner-scenario':
+                  description = 'Tests files with no ownership requirements';
+                  break;
+                case 'mixed-ownership-scenario':
+                  description = 'Tests complex patterns with overlapping ownership rules';
+                  break;
+              }
+              
+              summary += `| ${scenario.replace('-', ' ')} | ${emoji} ${result} | ${description} |\n`;
+            }
+            
+            summary += '\n## 📚 Learning Objectives\n\n';
+            summary += '- **Multi-Owner Requirements**: Some files may need approval from multiple teams\n';
+            summary += '- **Pattern Matching**: CODEOWNERS uses glob patterns to match files\n';
+            summary += '- **Specificity Rules**: More specific patterns override general ones\n';
+            summary += '- **Fail-Safe Behavior**: The action blocks merging when approvals are missing\n\n';
+            
+            summary += '## 🔧 How to Use These Scenarios\n\n';
+            summary += '1. **Manual Testing**: Use `workflow_dispatch` to test specific scenarios\n';
+            summary += '2. **PR Testing**: Create PRs with different file changes to see real behavior\n';
+            summary += '3. **Template Reference**: Copy patterns from scenarios to your CODEOWNERS file\n\n';
+            
+            summary += '### 📊 Current Run Results\n\n';
+            summary += `**Repository**: ${githubContext.repository}\n`;
+            summary += `**Event**: ${githubContext.event_name}\n`;
+            summary += `**Run ID**: ${githubContext.run_id}\n`;
+            
+            // Add to job summary
+            core.summary.addRaw(summary);
+            await core.summary.write();
