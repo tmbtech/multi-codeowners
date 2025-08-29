@@ -192,7 +192,8 @@ function createCheckDetails(approvalResult: ApprovalCheckResult): string {
 
   const lines: string[] = [];
   
-  lines.push('## Required Code Owner Approvals\\n');
+  lines.push('## Required Code Owner Approvals');
+  lines.push('');
   
   for (const status of approvalResult.ownerStatuses) {
     const icon = status.isApproved ? '✅' : '❌';
@@ -204,13 +205,14 @@ function createCheckDetails(approvalResult: ApprovalCheckResult): string {
   }
 
   if (approvalResult.missingApprovals.length > 0) {
-    lines.push('\\n### Still needed:');
+    lines.push('');
+    lines.push('### Still needed:');
     for (const owner of approvalResult.missingApprovals) {
       lines.push(`- ${owner}`);
     }
   }
 
-  return lines.join('\\n');
+  return lines.join('\n');
 }
 
 /**
@@ -273,5 +275,5 @@ function createCommentBody(
   lines.push('---');
   lines.push('*This comment is automatically updated by the Dynamic Code Owners Reviewer Bot*');
 
-  return lines.join('\\n');
+  return lines.join('\n');
 }
