@@ -38,8 +38,20 @@ jobs:
         
       - name: 'Check for uncommitted changes'
         run: |
-          if [ "$(git diff --ignore-space-at-eol dist/ | wc -l)" -gt "0" ]; then
-            echo "Detected uncommitted changes after build. See status below:"
-            git diff
+          echo "=== Checking for uncommitted changes in dist/ ==="
+          git status dist/
+          echo "\n=== Git diff output (with ignore-space-at-eol): ==="
+          git diff --ignore-space-at-eol dist/
+          echo "\n=== Line count of diff: ==="
+          git diff --ignore-space-at-eol dist/ | wc -l
+          
+          DIFF_LINES=$(git diff --ignore-space-at-eol dist/ | wc -l | tr -d ' ')
+          echo "Diff lines: '$DIFF_LINES'"
+          
+          if [ "$DIFF_LINES" -gt "0" ]; then
+            echo "\n❌ Detected uncommitted changes after build. See status above."
+            echo "This usually means the dist/ directory needs to be rebuilt and committed."
             exit 1
+          else
+            echo "\n✅ No uncommitted changes detected in dist/ directory."
           fi
