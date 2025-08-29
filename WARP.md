@@ -22,11 +22,13 @@ This is a GitHub Action that implements a **Dynamic Code Owners Reviewer Bot**. 
 - **Run tests in watch mode**: `yarn test:watch`
 - **Run single test file**: `yarn test src/__tests__/codeowners.test.ts`
 - **Run tests with coverage**: `yarn test --coverage`
+- **Debug specific test**: Add `--verbose` flag for detailed test output
 
 ### Code Quality
 - **Lint code**: `yarn lint`
 - **Auto-fix linting issues**: `yarn lint:fix`
 - **Check TypeScript compilation**: `yarn build`
+- **TypeScript type checking**: `tsc --noEmit` (checks types without building)
 
 ### GitHub Action Testing
 - **Test the action locally**: Build first with `yarn build`, then use `act` or test in a fork
@@ -100,6 +102,8 @@ The bot searches for CODEOWNERS in this order:
 - **`@actions/github`**: GitHub API wrapper with context
 - **`@octokit/rest`**: GitHub REST API client
 - **`micromatch`**: File pattern matching (implements GitHub's CODEOWNERS behavior)
+- **`@vercel/ncc`**: Compiles Node.js modules into a single file for GitHub Actions
+- **`ts-jest`**: TypeScript preprocessor for Jest testing framework
 
 ## Common Development Scenarios
 
@@ -126,3 +130,21 @@ The CODEOWNERS pattern matching follows GitHub's specific behavior:
 - CODEOWNERS file is cached per run
 - Changed files are fetched with pagination support
 - Team membership checks are batched where possible
+
+### Event Support
+The bot supports these GitHub webhook events:
+- `pull_request`: `opened`, `synchronize`, `ready_for_review`
+- `pull_request_review`: `submitted`, `dismissed`
+
+**Note**: The bot only processes `pull_request` events and will exit gracefully for other event types.
+
+### Environment Variables for Testing
+- **`DEMO_SCENARIO`**: When set, forces reading CODEOWNERS from filesystem instead of GitHub API
+- **`ACTIONS_STEP_DEBUG=true`**: Enables verbose debug logging in GitHub Actions
+- **`GITHUB_TOKEN`**: Required for GitHub API access (auto-provided in Actions)
+
+### Output Values
+The action provides these outputs for use in subsequent workflow steps:
+- **`result`**: `"success"` or `"failure"` - overall approval status
+- **`required_owners`**: JSON array of all required owner groups
+- **`missing_approvals`**: JSON array of owner groups still needing approval
